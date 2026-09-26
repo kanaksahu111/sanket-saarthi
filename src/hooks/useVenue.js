@@ -3,18 +3,13 @@ import { subscribeToTrain } from "../services/venueService";
 
 export const useVenue = (trainId) => {
   const [train, setTrain] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(Boolean(trainId));
+  const [error] = useState(null);
 
   useEffect(() => {
     if (!trainId) {
-      setTrain(null);
-      setLoading(false);
       return;
     }
-
-    setLoading(true);
-    setError(null);
 
     const unsubscribe = subscribeToTrain(trainId, (data) => {
       setTrain(data);
@@ -22,7 +17,7 @@ export const useVenue = (trainId) => {
     });
 
     return () => {
-      unsubscribe();
+      if (typeof unsubscribe === "function") unsubscribe();
     };
   }, [trainId]);
 

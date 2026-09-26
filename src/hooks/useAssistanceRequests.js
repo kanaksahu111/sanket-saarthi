@@ -10,15 +10,13 @@ export const useAssistanceRequests = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setLoading(true);
-
     const unsubscribe = subscribeToAssistanceRequests((data) => {
       setRequests(data);
       setLoading(false);
     });
 
     return () => {
-      unsubscribe();
+      if (typeof unsubscribe === "function") unsubscribe();
     };
   }, []);
 

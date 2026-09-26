@@ -1,58 +1,51 @@
-import {
-  collection,
-  doc,
-  getDoc,
-  onSnapshot,
-  updateDoc,
-} from "firebase/firestore";
-
+import { collection, doc, onSnapshot, updateDoc } from "firebase/firestore";
 import { db } from "../firebase/config";
+import { getCityVenue, getCityVenueList, CITY_VENUES_MULTIPLE } from "./cityDataService";
 
-// Reference to the trains collection for our railway station
-const trainsCollection = collection(
-  db,
-  "venues",
-  "central-station",
-  "trains"
-);
+export { CITY_VENUES_MULTIPLE as VENUE_TYPES };
 
-// Get one train's current information
-export const getTrain = async (trainId) => {
-  const trainRef = doc(trainsCollection, trainId);
-  const snapshot = await getDoc(trainRef);
+export const getVenueDataList = (cityId = "mumbai", placeId = "railway") => {
+  return getCityVenueList(cityId, placeId);
+};
 
-  if (!snapshot.exists()) {
-    return null;
+export const getVenueData = (cityId = "mumbai", placeId = "railway", venueId = null) => {
+  return getCityVenue(cityId, placeId, venueId);
+};
+
+export const subscribeToVenue = (cityId = "mumbai", placeId = "railway", callback, venueId = null) => {
+  const venueObj = getVenueData(cityId, placeId, venueId);
+  const venueKey = `${cityId}-${placeId}-${venueObj.id}`;
+  const venueRef = doc(collection(db, "venues"), venueKey);
+
+  try {
+    return onSnapshot(
+      venueRef,
+      (snapshot) => {
+        if (!snapshot.exists()) {
+          callback(venueObj);
+          return;
+        }
+        callback({ id: snapshot.id, ...snapshot.data() });
+      },
+      (error) => {
+        console.warn(`Firebase venue sub error for ${venueKey}, using local city data:`, error);
+        callback(venueObj);
+      }
+    );
+  } catch (err) {
+    console.warn("Firebase unavailable, returning fallback city venue data:", err);
+    callback(venueObj);
+    return () => {};
   }
-
-  return {
-    id: snapshot.id,
-    ...snapshot.data(),
-  };
 };
 
-// Listen for realtime changes to one train
-export const subscribeToTrain = (trainId, callback) => {
-  const trainRef = doc(trainsCollection, trainId);
-
-  return onSnapshot(trainRef, (snapshot) => {
-    if (!snapshot.exists()) {
-      callback(null);
-      return;
-    }
-
-    callback({
-      id: snapshot.id,
-      ...snapshot.data(),
-    });
-  });
-};
-
-// Update a train's platform
-export const updateTrainPlatform = async (trainId, platform) => {
-  const trainRef = doc(trainsCollection, trainId);
-
-  await updateDoc(trainRef, {
-    platform,
-  });
+export const updateVenueTarget = async (cityId = "mumbai", placeId = "railway", targetValue, venueId = null) => {
+  try {
+    const venueObj = getVenueData(cityId, placeId, venueId);
+    const venueKey = `${cityId}-${placeId}-${venueObj.id}`;
+    const venueRef = doc(collection(db, "venues"), venueKey);
+    await updateDoc(venueRef, { targetValue });
+  } catch (err) {
+    console.warn("Firebase venue update error:", err);
+  }
 };

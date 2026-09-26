@@ -3,16 +3,12 @@ import { subscribeToFacility } from "../services/facilityService";
 
 export const useFacilities = (facilityIds = []) => {
   const [facilities, setFacilities] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(facilityIds.length > 0);
 
   useEffect(() => {
     if (facilityIds.length === 0) {
-      setFacilities([]);
-      setLoading(false);
       return;
     }
-
-    setLoading(true);
 
     const unsubscribes = facilityIds.map((facilityId) =>
       subscribeToFacility(facilityId, (facility) => {
@@ -33,7 +29,9 @@ export const useFacilities = (facilityIds = []) => {
     );
 
     return () => {
-      unsubscribes.forEach((unsubscribe) => unsubscribe());
+      unsubscribes.forEach((unsubscribe) => {
+        if (typeof unsubscribe === "function") unsubscribe();
+      });
     };
   }, [facilityIds]);
 
