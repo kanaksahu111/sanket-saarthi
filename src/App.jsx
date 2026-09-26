@@ -1,47 +1,39 @@
 import { useState } from "react";
 import "./App.css";
 import Dashboard from "./pages/Dashboard";
+import { useVenue } from "./hooks/useVenue";
+import { useAssistanceRequests } from "./hooks/useAssistanceRequests";
 
 function App() {
   const [screen, setScreen] = useState("home");
+  const [journeyStep, setJourneyStep] = useState(1);
 
   const [preferences, setPreferences] = useState({
-    visualAlerts: false,
-    stepFreeNavigation: false,
-    audioGuidance: false,
-    simpleGuidance: false,
-  });
+  sensorySupport: false,
+  mobilitySupport: false,
+});
+const { train } = useVenue("train-001");
+const platform = train?.platform ?? "—";
+
+const { createRequest } = useAssistanceRequests();
 
   const places = [
-    {
-      id: "railway",
-      icon: "🚆",
-      title: "Railway Station",
-      description:
-        "Find platforms, entrances, facilities and accessible routes.",
-    },
-    {
-      id: "hospital",
-      icon: "🏥",
-      title: "Hospital",
-      description:
-        "Find departments, registration, entrances and assistance.",
-    },
-    {
-      id: "tourist",
-      icon: "🏛️",
-      title: "Tourist Site",
-      description:
-        "Explore attractions, routes, facilities and visitor support.",
-    },
-    {
-      id: "office",
-      icon: "🏢",
-      title: "Public Office",
-      description:
-        "Find the right counter, department and service.",
-    },
-  ];
+  {
+    id: "railway",
+    icon: "🚆",
+    title: "Railway Station",
+    description:
+      "Find platforms, entrances, facilities and accessible routes.",
+  },
+  {
+    id: "airport",
+    icon: "✈️",
+    title: "Airport",
+    description:
+      "Accessible navigation and assistance for airport journeys.",
+    comingSoon: true,
+  },
+];
 
   /* =========================
      DASHBOARD
@@ -113,13 +105,13 @@ function App() {
           </h1>
 
           <p className="journey-description">
-            Central Railway Station → Platform 3
+            Central Railway Station → Platform {platform} 
           </p>
 
 
           <div className="guided-route">
 
-            <div className="guided-step active">
+            <div className={`guided-step ${journeyStep === 1 ? "active" : ""}`}>
 
               <div className="guided-number">
                 1
@@ -141,7 +133,7 @@ function App() {
             <div className="guided-line"></div>
 
 
-            <div className="guided-step">
+            <div className={`guided-step ${journeyStep === 2 ? "active" : ""}`}>
 
               <div className="guided-number">
                 2
@@ -163,7 +155,7 @@ function App() {
             <div className="guided-line"></div>
 
 
-            <div className="guided-step">
+            <div className={`guided-step ${journeyStep === 3 ? "active" : ""}`}>
 
               <div className="guided-number">
                 3
@@ -185,7 +177,7 @@ function App() {
             <div className="guided-line"></div>
 
 
-            <div className="guided-step">
+            <div className={`guided-step ${journeyStep === 4 ? "active" : ""}`}>
 
               <div className="guided-number">
                 4
@@ -193,7 +185,7 @@ function App() {
 
               <div>
                 <strong>
-                  Platform 3
+                  Platform {platform}
                 </strong>
 
                 <small>
@@ -210,21 +202,30 @@ function App() {
 
             <button
               className="continue-button"
-              onClick={() =>
-                alert("You have reached the next checkpoint.")
-              }
-            >
-              I've Reached This Point
-              <span>→</span>
+  onClick={() =>
+    setJourneyStep((current) => Math.min(current + 1, 4))
+  }
+>
+  I've Reached This Point
+  <span>→</span>
             </button>
 
             <button
               className="assistance-button"
-              onClick={() =>
-                alert(
-                  "Assistance request feature will be connected to the backend."
-                )
-              }
+              onClick={async () => {
+  try {
+    await createRequest({
+      type: "MOBILITY",
+      location: "Guided Journey",
+      message: "Visitor needs assistance during navigation.",
+    });
+
+    
+  } catch (error) {
+    console.error("Assistance request failed:", error);
+    
+  }
+}}
             >
               🆘 Need Assistance
             </button>
@@ -245,35 +246,21 @@ function App() {
   if (screen === "preferences") {
 
     const options = [
-      {
-        id: "visualAlerts",
-        icon: "👁",
-        title: "Visual guidance",
-        description:
-          "Clear visual alerts and important updates.",
-      },
-      {
-        id: "stepFreeNavigation",
-        icon: "♿",
-        title: "Step-free route",
-        description:
-          "Avoid stairs and use accessible paths where possible.",
-      },
-      {
-        id: "audioGuidance",
-        icon: "🔊",
-        title: "Audio guidance",
-        description:
-          "Receive spoken directions during your journey.",
-      },
-      {
-        id: "simpleGuidance",
-        icon: "✋",
-        title: "Simple guidance",
-        description:
-          "Short and easy-to-follow instructions.",
-      },
-    ];
+  {
+    id: "sensorySupport",
+    icon: "👁️",
+    title: "Sensory Support",
+    description:
+      "Clear visual information and guidance for a more comfortable journey.",
+  },
+  {
+    id: "mobilitySupport",
+    icon: "♿",
+    title: "Mobility Support",
+    description:
+      "Step-free routes, accessible facilities and easier movement through the station.",
+  },
+];
 
     return (
       <div className="app">
@@ -369,12 +356,12 @@ function App() {
 
 
           <button
-            className="continue-button"
-            onClick={() => setScreen("dashboard")}
-          >
-            Continue
-            <span>→</span>
-          </button>
+  className="continue-button"
+  disabled={!preferences.sensorySupport && !preferences.mobilitySupport}
+  onClick={() => setScreen("dashboard")}
+>
+  Continue
+</button>
 
         </main>
 
@@ -436,16 +423,15 @@ function App() {
             {places.map((place) => (
 
               <button
-                className="place-card"
+              className={`place-card ${place.comingSoon ? "coming-soon"
+                : ""}`}
                 key={place.id}
                 onClick={() => {
-
                   if (place.id === "railway") {
                     setScreen("preferences");
                   }
-
-                }}
-              >
+                  }}
+                >
 
                 <div className="place-icon">
                   {place.icon}
@@ -463,9 +449,15 @@ function App() {
 
                 </div>
 
-                <span className="place-arrow">
-                  →
-                </span>
+                {place.comingSoon ? (
+                  <span className="coming-soon-label">
+                    COMING SOON
+                    </span>
+                    ) : (
+                    <span className="place-arrow">
+                      →
+                      </span>
+                    )}
 
               </button>
 
@@ -583,7 +575,7 @@ function App() {
 
               <div className="route-point">
                 <span></span>
-                Platform 3
+                Platform {platform}
               </div>
 
             </div>
@@ -608,7 +600,7 @@ function App() {
               </strong>
 
               <small>
-                Platform 3 is accessible
+                Platform {platform} is currently accessible
               </small>
 
             </div>
