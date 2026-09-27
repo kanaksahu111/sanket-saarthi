@@ -1,21 +1,85 @@
+import { useEffect, useRef } from "react";
+
+import { useAssistanceRequests } from "../hooks/useAssistanceRequests";
+import { useVenue } from "../hooks/useVenue";
+import { useFacilities } from "../hooks/useFacilities";
+import { triggerVibration } from "../utils/vibration";
+
+
 function Dashboard({ preferences, onJourney }) {
+  const { train, loading: trainLoading } = useVenue("train-001");
+  const platform = train?.platform ?? "—";
+  const { facilities, loading: facilitiesLoading } = useFacilities([
+  "lift-a",
+  "lift-b",
+]);
+const liftA = facilities.find((facility) => facility.id === "lift-a");
+const liftB = facilities.find((facility) => facility.id === "lift-b");
+const { requests, createRequest } = useAssistanceRequests();
+const latestAssistanceRequest =
+  requests.length > 0 ? requests[requests.length - 1] : null;
+  const previousPlatform = useRef(null);
+  const previousLiftStatus = useRef(null);
+  const previousAssistanceStatus = useRef(null);
+  useEffect(() => {
+  if (!preferences?.sensorySupport) {
+    return;
+  }
+
+  // Train platform update
+  if (!trainLoading && train?.platform != null) {
+    if (
+      previousPlatform.current !== null &&
+      previousPlatform.current !== train.platform
+    ) {
+      triggerVibration();
+    }
+
+    previousPlatform.current = train.platform;
+  }
+
+  // Lift status update
+  if (!facilitiesLoading && liftA?.status) {
+    if (
+      previousLiftStatus.current !== null &&
+      previousLiftStatus.current !== liftA.status
+    ) {
+      triggerVibration();
+    }
+
+    previousLiftStatus.current = liftA.status;
+  }
+
+  // Assistance status update
+  if (latestAssistanceRequest?.status) {
+    if (
+      previousAssistanceStatus.current !== null &&
+      previousAssistanceStatus.current !== latestAssistanceRequest.status
+    ) {
+      triggerVibration();
+    }
+
+    previousAssistanceStatus.current =
+      latestAssistanceRequest.status;
+  }
+}, [
+  preferences?.sensorySupport,
+  train?.platform,
+  trainLoading,
+  liftA?.status,
+  facilitiesLoading,
+  latestAssistanceRequest?.status,
+]);
+
   const selectedPreferences = [];
 
-  if (preferences && preferences.visualAlerts) {
-    selectedPreferences.push("Visual alerts");
-  }
+if (preferences?.sensorySupport) {
+  selectedPreferences.push("Sensory Support");
+}
 
-  if (preferences && preferences.stepFreeNavigation) {
-    selectedPreferences.push("Step-free route");
-  }
-
-  if (preferences && preferences.audioGuidance) {
-    selectedPreferences.push("Audio guidance");
-  }
-
-  if (preferences && preferences.simpleGuidance) {
-    selectedPreferences.push("Simple guidance");
-  }
+if (preferences?.mobilitySupport) {
+  selectedPreferences.push("Mobility Support");
+}
 
   return (
     <main className="dashboard-page">
@@ -58,7 +122,7 @@ function Dashboard({ preferences, onJourney }) {
               </div>
 
               <h2>
-                Entrance → Platform 3
+                Entrance → Platform {platform}
               </h2>
 
             </div>
@@ -155,7 +219,7 @@ function Dashboard({ preferences, onJourney }) {
               <div className="journey-step-content">
 
                 <strong>
-                  Platform 3
+                  Platform {platform}
                 </strong>
 
                 <small>
@@ -248,27 +312,70 @@ function Dashboard({ preferences, onJourney }) {
               </strong>
 
               <p>
-                Platform 3 currently has an
-                accessible route available.
+                {trainLoading
+                ? "Checking the latest platform information..."
+                : `Platform ${platform} currently has an accessible
+                route available.`}
               </p>
 
             </div>
 
           </div>
+          <div className="live-update-card">
+            <div className="update-icon">
+              ♿
+              </div>
+              <div>
+                <strong>Lift status</strong>
+                <p>
+                  {facilitiesLoading
+                  ? "Checking lift availability..."
+                  : liftA?.status === "OUT_OF_SERVICE"
+                  ? liftB?.status === "OUT_OF_SERVICE"
+                  ? "Lift A and Lift B are currently unavailable."
+                  : "Lift A is out of service. Use Lift B for step-free access."
+                  : "Lift A is available for step-free access."}
+                  </p>
+                  </div>
+                  </div>
+         {latestAssistanceRequest && (
+  <div className="live-update-card">
+    <div className="update-icon">
+      🆘
+    </div>
+
+    <div>
+      <strong>Assistance request</strong>
+
+      <p>
+        Status: {latestAssistanceRequest.status}
+      </p>
+    </div>
+  </div>
+)}
 
 
           {/* ASSISTANCE */}
 
           <button
-            className="assistance-button"
-            onClick={() =>
-              alert(
-                "Assistance request feature will be connected to the backend."
-              )
-            }
-          >
-            🆘 Request Assistance
-          </button>
+  className="assistance-button"
+  onClick={async () => {
+    try {
+      await createRequest({
+        type: "MOBILITY",
+        location: "Entrance Gate 2",
+        message: "Visitor needs mobility assistance.",
+      });
+
+      
+    } catch (error) {
+      console.error("Assistance request failed:", error);
+     
+    }
+  }}
+>
+  {latestAssistanceRequest ? "✓ Assistance Requested" : "🆘 Request Assistance"}
+</button>
 
         </aside>
 
