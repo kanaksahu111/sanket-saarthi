@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import { subscribeToTrain } from "../services/venueService";
+import { demoTrain, demoState } from "../data/demoData";
+
+const DEMO_MODE = false;
 
 export const useVenue = (trainId) => {
   const [train, setTrain] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
 
   useEffect(() => {
     if (!trainId) {
@@ -13,8 +15,17 @@ export const useVenue = (trainId) => {
       return;
     }
 
+    if (DEMO_MODE) {
+      setTrain({
+        ...demoTrain,
+        platform: demoState.platform,
+      });
+
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
-    setError(null);
 
     const unsubscribe = subscribeToTrain(trainId, (data) => {
       setTrain(data);
@@ -29,6 +40,5 @@ export const useVenue = (trainId) => {
   return {
     train,
     loading,
-    error,
   };
 };

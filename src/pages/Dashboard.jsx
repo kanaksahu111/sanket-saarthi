@@ -351,7 +351,10 @@ if (preferences?.mobilitySupport) {
         Status: {latestAssistanceRequest.status}
       </p>
     </div>
+   
   </div>
+
+
 )}
 
 
@@ -366,15 +369,14 @@ if (preferences?.mobilitySupport) {
         location: "Entrance Gate 2",
         message: "Visitor needs mobility assistance.",
       });
-
-      
     } catch (error) {
       console.error("Assistance request failed:", error);
-     
     }
   }}
 >
-  {latestAssistanceRequest ? "✓ Assistance Requested" : "🆘 Request Assistance"}
+  {latestAssistanceRequest
+    ? "✓ Assistance Requested"
+    : "🆘 Request Assistance"}
 </button>
 
         </aside>

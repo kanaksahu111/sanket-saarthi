@@ -1,5 +1,8 @@
 import { useEffect, useState } from "react";
 import { subscribeToFacility } from "../services/facilityService";
+import { demoFacilities } from "../data/demoData";
+
+const DEMO_MODE = false;
 
 export const useFacilities = (facilityIds = []) => {
   const [facilities, setFacilities] = useState([]);
@@ -8,6 +11,16 @@ export const useFacilities = (facilityIds = []) => {
   useEffect(() => {
     if (facilityIds.length === 0) {
       setFacilities([]);
+      setLoading(false);
+      return;
+    }
+
+    if (DEMO_MODE) {
+      const selectedFacilities = demoFacilities.filter((facility) =>
+        facilityIds.includes(facility.id)
+      );
+
+      setFacilities(selectedFacilities);
       setLoading(false);
       return;
     }
@@ -35,7 +48,7 @@ export const useFacilities = (facilityIds = []) => {
     return () => {
       unsubscribes.forEach((unsubscribe) => unsubscribe());
     };
-  }, [facilityIds]);
+  }, [facilityIds.join("|")]);
 
   return {
     facilities,
