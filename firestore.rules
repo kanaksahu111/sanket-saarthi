@@ -1,0 +1,88 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function staff() {
+      return request.auth != null && exists(/databases/$(database)/documents/staff/$(request.auth.uid))
+        && get(/databases/$(database)/documents/staff/$(request.auth.uid)).data.enabled == true;
+    }
+    match /staff/{uid} {
+      allow get: if request.auth != null && request.auth.uid == uid;
+      allow list, write: if false;
+    }
+    match /venues/central-station {
+      allow read: if true;
+      allow create, update: if staff();
+      match /trains/{id} {
+        allow read: if true;
+        allow create, update: if staff() && request.resource.data.platform is int
+          && request.resource.data.platform >= 1 && request.resource.data.platform <= 20;
+      }
+      match /facilities/{id} {
+        allow read: if true;
+        allow create, update: if staff() && request.resource.data.status in ['OPERATIONAL', 'UNAVAILABLE', 'MAINTENANCE'];
+      }
+      match /activityLogs/{id} {
+        allow read: if staff();
+        allow create: if staff() && request.resource.data.actor == request.auth.uid
+          && request.resource.data.createdAt == request.time
+          && request.resource.data.text is string && request.resource.data.text.size() <= 500;
+      }
+    }
+    match /assistanceRequests/{id} {
+      allow read: if request.auth != null && (staff() || resource.data.ownerId == request.auth.uid);
+      allow create: if request.auth != null
+        && request.resource.data.keys().hasOnly(['stationCode', 'stationName', 'type', 'location', 'locationId', 'destination', 'destinationId', 'wheelchair', 'human', 'support', 'journeyId', 'ownerId', 'venueId', 'status', 'createdAt'])
+        && request.resource.data.stationCode is string && request.resource.data.stationCode.matches('^[A-Z0-9]{1,8}
+        && request.resource.data.venueId == 'central-station'
+        && request.resource.data.status == 'PENDING'
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.type in ['Mobility Assistance', 'Navigation Help', 'Communication Assistance', 'Boarding Assistance', 'Luggage Assistance', 'Wheelchair Assistance', 'Human Assistance', 'Wheelchair + Human Assistance', 'Other']
+        && request.resource.data.locationId is string && request.resource.data.locationId.size() <= 60
+        && request.resource.data.destination is string && request.resource.data.destination.size() <= 120
+        && request.resource.data.destinationId is string && request.resource.data.destinationId.size() <= 60
+        && request.resource.data.wheelchair is bool && request.resource.data.human is bool
+        && request.resource.data.support is string && request.resource.data.support.size() <= 120
+        && request.resource.data.journeyId is string && request.resource.data.journeyId.size() <= 60
+        && request.resource.data.location is string && request.resource.data.location.size() > 0 && request.resource.data.location.size() <= 120;
+      allow update: if staff()
+        && ((resource.data.status == 'PENDING' && request.resource.data.status == 'ACCEPTED')
+          || (resource.data.status == 'ACCEPTED' && request.resource.data.status == 'ON_THE_WAY')
+          || (resource.data.status == 'ON_THE_WAY' && request.resource.data.status == 'COMPLETED'))
+        && request.resource.data.updatedBy == request.auth.uid
+        && request.resource.data.statusUpdatedAt == request.time
+        && (resource.data.status != 'PENDING' ||
+          (request.resource.data.acceptedBy == request.auth.uid && request.resource.data.acceptedAt == request.time))
+        && (resource.data.status == 'PENDING'
+          ? request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','acceptedBy','acceptedAt','updatedBy','statusUpdatedAt'])
+          : request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','updatedBy','statusUpdatedAt']));
+    }
+  }
+}
+)
+        && request.resource.data.stationName is string && request.resource.data.stationName.size() > 0 && request.resource.data.stationName.size() <= 120
+        && request.resource.data.ownerId == request.auth.uid
+        && request.resource.data.venueId == 'central-station'
+        && request.resource.data.status == 'PENDING'
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.type in ['Mobility Assistance', 'Navigation Help', 'Communication Assistance', 'Boarding Assistance', 'Luggage Assistance', 'Wheelchair Assistance', 'Human Assistance', 'Wheelchair + Human Assistance', 'Other']
+        && request.resource.data.locationId is string && request.resource.data.locationId.size() <= 60
+        && request.resource.data.destination is string && request.resource.data.destination.size() <= 120
+        && request.resource.data.destinationId is string && request.resource.data.destinationId.size() <= 60
+        && request.resource.data.wheelchair is bool && request.resource.data.human is bool
+        && request.resource.data.support is string && request.resource.data.support.size() <= 120
+        && request.resource.data.journeyId is string && request.resource.data.journeyId.size() <= 60
+        && request.resource.data.location is string && request.resource.data.location.size() > 0 && request.resource.data.location.size() <= 120;
+      allow update: if staff()
+        && ((resource.data.status == 'PENDING' && request.resource.data.status == 'ACCEPTED')
+          || (resource.data.status == 'ACCEPTED' && request.resource.data.status == 'ON_THE_WAY')
+          || (resource.data.status == 'ON_THE_WAY' && request.resource.data.status == 'COMPLETED'))
+        && request.resource.data.updatedBy == request.auth.uid
+        && request.resource.data.statusUpdatedAt == request.time
+        && (resource.data.status != 'PENDING' ||
+          (request.resource.data.acceptedBy == request.auth.uid && request.resource.data.acceptedAt == request.time))
+        && (resource.data.status == 'PENDING'
+          ? request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','acceptedBy','acceptedAt','updatedBy','statusUpdatedAt'])
+          : request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','updatedBy','statusUpdatedAt']));
+    }
+  }
+}

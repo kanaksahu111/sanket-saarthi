@@ -1,57 +1,19 @@
-import { useEffect, useState } from "react";
-import { subscribeToFacility } from "../services/facilityService";
-import { demoFacilities } from "../data/demoData";
-
-const DEMO_MODE = false;
-
-export const useFacilities = (facilityIds = []) => {
-  const [facilities, setFacilities] = useState([]);
-  const [loading, setLoading] = useState(true);
-
+import { useEffect, useState } from 'react';
+import { subscribeToFacility } from '../services/facilityService';
+export function useFacilities(facilityIds = []) {
+  const key = JSON.stringify(facilityIds);
+  const [records, setRecords] = useState({});
   useEffect(() => {
-    if (facilityIds.length === 0) {
-      setFacilities([]);
-      setLoading(false);
-      return;
-    }
-
-    if (DEMO_MODE) {
-      const selectedFacilities = demoFacilities.filter((facility) =>
-        facilityIds.includes(facility.id)
-      );
-
-      setFacilities(selectedFacilities);
-      setLoading(false);
-      return;
-    }
-
-    setLoading(true);
-
-    const unsubscribes = facilityIds.map((facilityId) =>
-      subscribeToFacility(facilityId, (facility) => {
-        setFacilities((currentFacilities) => {
-          const filtered = currentFacilities.filter(
-            (item) => item.id !== facilityId
-          );
-
-          if (!facility) {
-            return filtered;
-          }
-
-          return [...filtered, facility];
-        });
-
-        setLoading(false);
-      })
-    );
-
-    return () => {
-      unsubscribes.forEach((unsubscribe) => unsubscribe());
-    };
-  }, [facilityIds.join("|")]);
-
+    const ids = JSON.parse(key);
+    const stops = ids.map(id => subscribeToFacility(id,
+      (facility, meta) => setRecords(previous => ({ ...previous, [id]: { facility, ...meta, error: '' } })),
+      error => setRecords(previous => ({ ...previous, [id]: { facility: null, error: error.message, fromCache: true } }))));
+    return () => stops.forEach(stop => stop());
+  }, [key]);
   return {
-    facilities,
-    loading,
+    facilities: facilityIds.map(id => records[id]?.facility).filter(Boolean),
+    loading: facilityIds.some(id => !records[id]),
+    error: facilityIds.map(id => records[id]?.error).filter(Boolean).join(' '),
+    fromCache: facilityIds.some(id => records[id]?.fromCache !== false),
   };
-};
+}
